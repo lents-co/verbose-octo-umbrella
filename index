@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#0f0f13">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ライフプラン">
+<title>ライフプランニング</title>
+ 
+<!-- PWA Manifest (inline) -->
+<link rel="manifest" href="manifest.json">
+ 
+<!-- Apple Touch Icon (inline SVG as data URI) -->
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%230f0f13'/%3E%3Crect x='20' y='30' width='6' height='40' rx='3' fill='%236ee7b7'/%3E%3Crect x='20' y='50' width='6' height='20' rx='3' fill='%233b82f6'/%3E%3Crect x='34' y='25' width='46' height='3' rx='1.5' fill='%236ee7b7'/%3E%3Crect x='34' y='38' width='36' height='3' rx='1.5' fill='%2393c5fd'/%3E%3Crect x='34' y='51' width='40' height='3' rx='1.5' fill='%23fca5a5'/%3E%3Crect x='34' y='64' width='30' height='3' rx='1.5' fill='%23fdba74'/%3E%3C/svg%3E">
+ 
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; background: #0f0f13; }
+  body {
+    font-family: -apple-system, 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif;
+    color: #e2e8f0;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+  input, select, textarea, button { font-family: inherit; }
+  button { -webkit-tap-highlight-color: transparent; }
+ 
+  /* Safe area for notched phones */
+  #app {
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+    padding-bottom: env(safe-area-inset-bottom, 20px);
+  }
+ 
+  .sr-only {
+    position: absolute; width: 1px; height: 1px;
+    overflow: hidden; clip: rect(0,0,0,0);
+  }
+ 
+  /* Scrollable task list */
+  .task-scroll {
+    max-height: calc(100vh - 340px);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .task-scroll::-webkit-scrollbar { display: none; }
+ 
+  /* Checkbox animation */
+  .check-box {
+    width: 22px; height: 22px; border-radius: 6px;
+    border: 2px solid #374151; background: transparent;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; transition: all 0.2s;
+  }
+  .check-box.done { border-color: #6ee7b7; background: #6ee7b7; }
+ 
+  /* Progress bar */
+  .progress-fill {
+    height: 100%; border-radius: 6px;
+    background: linear-gradient(to right, #3b82f6, #6ee7b7);
+    transition: width 0.5s ease;
+  }
+ 
+  /* Tab button */
+  .tab-btn {
+    flex: 1; padding: 8px 2px; font-size: 11px; font-weight: 400;
+    background: transparent; color: #4b5563;
+    border: none; border-radius: 7px; cursor: pointer;
+    transition: all 0.15s;
+  }
+  .tab-btn.active { font-weight: 600; background: #252535; color: #e2e8f0; }
+ 
+  /* Filter pill */
+  .filter-pill {
+    padding: 5px 12px; font-size: 12px; border-radius: 20px;
+    border: 1px solid #2d2d3d; background: transparent;
+    color: #64748b; cursor: pointer; transition: all 0.15s;
+    white-space: nowrap;
+  }
+ 
+  /* Task card */
+  .task-card {
+    background: #1a1a23; border-radius: 10px; padding: 13px 14px;
+    border: 1px solid #2d2d3d; cursor: pointer;
+    display: flex; align-items: center; gap: 12px;
+    transition: border-color 0.2s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .task-card.done { border-color: #1d4b3e; }
+ 
+  /* Goal card */
+  .goal-card {
+    background: #1a1a23; border-radius: 12px; padding: 14px 16px;
+    border: 1px solid #2d2d3d; margin-bottom: 10px;
+  }
+  .goal-card.done { border-color: #1d4b3e; }
+ 
+  /* Input/textarea base */
+  .field {
+    width: 100%; background: #0f0f13; border: 1px solid #2d2d3d;
+    border-radius: 8px; color: #e2e8f0; font-size: 14px;
+    padding: 10px 12px; outline: none;
+    transition: border-color 0.2s;
+  }
+  .field:focus { border-color: #3b82f6; }
+ 
+  .btn-primary {
+    background: #3b82f6; color: #fff; border: none;
+    border-radius: 8px; padding: 9px 18px;
+    font-size: 14px; cursor: pointer; font-weight: 500;
+  }
+  .btn-secondary {
+    background: transparent; color: #64748b;
+    border: 1px solid #2d2d3d; border-radius: 8px;
+    padding: 9px 16px; font-size: 14px; cursor: pointer;
+  }
+  .btn-add {
+    background: #1e3a5f; color: #93c5fd;
+    border: 1px solid #1e40af; border-radius: 8px;
+    padding: 8px 16px; font-size: 13px; cursor: pointer;
+  }
+  .btn-edit {
+    background: transparent; border: 1px solid #2d2d3d;
+    color: #64748b; border-radius: 6px;
+    padding: 4px 10px; font-size: 12px; cursor: pointer;
+  }
+  .btn-delete {
+    background: transparent; border: none;
+    color: #374151; font-size: 20px; cursor: pointer;
+    padding: 0 4px; line-height: 1; flex-shrink: 0;
+  }
+  .cat-badge {
+    display: inline-block; font-size: 11px;
+    padding: 2px 8px; border-radius: 4px; font-weight: 600;
+  }
+</style>
+</head>
+<body>
+<div id="app"></div>
+ 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script>
+'use strict';
+const { useState, useEffect, useRef } = React;
+const h = React.createElement;
+ 
+// ── Constants ──────────────────────────────────────────────
+const TABS = ["ビジョン","長期目標\n(10年)","中期目標\n(1-3年)","デイリー\nタスク"];
+const CAT_COLORS = {
+  "キャリア":"#6ee7b7","学習":"#93c5fd","健康":"#fca5a5",
+  "スキル":"#c4b5fd","人間関係":"#fdba74","その他":"#d1d5db"
+};
+const cc = c => CAT_COLORS[c] || "#d1d5db";
+const getTodayKey = () => new Date().toISOString().split("T")[0];
+ 
+// ── Storage helpers (localStorage) ─────────────────────────
+const store = {
+  get: (k) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; } catch(e){ return null; } },
+  set: (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){} }
+};
+ 
+// ── Default data ────────────────────────────────────────────
+const DEF_VISION = {
+  statement: "テクノロジーとイノベーションを通じて社会に貢献し、学び続け、心身ともに豊かな人生を歩む。",
+  values: [
+    {id:1, icon:"📚", label:"学習・知識", desc:"日々の学びを積み重ね、専門性を深める"},
+    {id:2, icon:"💪", label:"健康・運動", desc:"心身の健康を最優先に、継続的な運動習慣"},
+    {id:3, icon:"❤️", label:"大切な人との絆", desc:"パートナーとの関係を大切に育む"},
+    {id:4, icon:"🌏", label:"社会貢献", desc:"イノベーションで世界に良い変化をもたらす"},
+  ]
+};
+ 
+const DEF_LONG = [
+  {id:1,category:"キャリア",goal:"テック系スタートアップを立ち上げ、社会課題を解決するプロダクトをリリースする",done:false},
+  {id:2,category:"学習",goal:"AI・機械学習の深い専門知識を持ち、研究や実装で貢献できる水準に到達する",done:false},
+  {id:3,category:"健康",goal:"マラソン完走・筋トレ継続で、10年後も最高のコンディションを維持する",done:false},
+  {id:4,category:"人間関係",goal:"パートナーと共に充実した人生を築き、互いの夢を支え合う",done:false},
+];
+ 
+const DEF_MID = [
+  {id:1,category:"スキル",goal:"機械学習・クラウド技術の資格を取得する",done:false},
+  {id:2,category:"健康",goal:"週4回以上の運動習慣を定着させる",done:false},
+  {id:3,category:"キャリア",goal:"副業・個人プロジェクトで収益を得る",done:false},
+  {id:4,category:"人間関係",goal:"パートナーと毎月特別な時間を作り、関係を深める",done:false},
+];
+ 
+const DEF_TASKS = [
+  {id:1,text:"技術書を30分読む",category:"学習",done:false},
+  {id:2,text:"Podcast / 講義を通勤中に聴く",category:"学習",done:false},
+  {id:3,text:"英語の勉強を15分する",category:"学習",done:false},
+  {id:4,text:"アウトプット（ブログ・メモ）を書く",category:"学習",done:false},
+  {id:5,text:"気になった技術を1つ調べる",category:"学習",done:false},
+  {id:6,text:"GitHubに1コミットする",category:"学習",done:false},
+  {id:7,text:"昨日の学びを3行でまとめる",category:"学習",done:false},
+  {id:8,text:"運動・ストレッチ（20分以上）",category:"健康",done:false},
+  {id:9,text:"7時間以上の睡眠を確保する",category:"健康",done:false},
+  {id:10,text:"水を1.5L以上飲む",category:"健康",done:false},
+  {id:11,text:"野菜を1食以上に取り入れる",category:"健康",done:false},
+  {id:12,text:"歩数10,000歩を達成する",category:"健康",done:false},
+  {id:13,text:"筋トレ（腕立て・スクワット）をする",category:"健康",done:false},
+  {id:14,text:"就寝1時間前にスマホをやめる",category:"健康",done:false},
+  {id:15,text:"パートナーに感謝を一言伝える",category:"人間関係",done:false},
+  {id:16,text:"一緒に食事をとる",category:"人間関係",done:false},
+  {id:17,text:"パートナーの話を10分じっくり聴く",category:"人間関係",done:false},
+  {id:18,text:"小さなサプライズ・気遣いをする",category:"人間関係",done:false},
+  {id:19,text:"個人プロジェクトを30分進める",category:"キャリア",done:false},
+  {id:20,text:"業界ニュースを3本読む",category:"キャリア",done:false},
+  {id:21,text:"タスクリストを朝に整理する",category:"キャリア",done:false},
+  {id:22,text:"振り返り（今日できたこと）を夜に書く",category:"キャリア",done:false},
+];
+ 
+// ── GoalList Component ──────────────────────────────────────
+function GoalList({ goals, onUpdate }) {
+  const [adding, setAdding] = useState(false);
+  const [newG, setNewG] = useState({ category:"学習", goal:"" });
+  const [editId, setEditId] = useState(null);
+  const [editDraft, setEditDraft] = useState("");
+ 
+  return h("div", null,
+    h("div", { style:{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:14 } },
+      h("div", { style:{ fontSize:13, color:"#64748b" } }, `${goals.filter(g=>g.done).length} / ${goals.length} 達成`),
+      h("button", { className:"btn-add", onClick:()=>setAdding(true) }, "+ 目標追加")
+    ),
+ 
+    adding && h("div", { style:{ background:"#1a1a23", borderRadius:12, padding:16, marginBottom:14, border:"1px solid #3b82f6" } },
+      h("select", { className:"field", style:{marginBottom:8}, value:newG.category, onChange:e=>setNewG({...newG,category:e.target.value}) },
+        Object.keys(CAT_COLORS).map(c => h("option",{key:c},c))
+      ),
+      h("textarea", { className:"field", placeholder:"目標を入力...", value:newG.goal, rows:3, style:{marginBottom:10,resize:"vertical"}, onChange:e=>setNewG({...newG,goal:e.target.value}) }),
+      h("div", { style:{display:"flex",gap:8} },
+        h("button", { className:"btn-primary", onClick:()=>{ if(!newG.goal.trim())return; onUpdate([...goals,{id:Date.now(),...newG,done:false}]); setNewG({category:"学習",goal:""}); setAdding(false); } }, "追加"),
+        h("button", { className:"btn-secondary", onClick:()=>setAdding(false) }, "キャンセル")
+      )
+    ),
+ 
+    h("div", null,
+      goals.map(g => h("div", { key:g.id, className:`goal-card${g.done?" done":""}` },
+        editId === g.id
+          ? h("div", null,
+              h("textarea", { className:"field", value:editDraft, rows:3, style:{marginBottom:10,resize:"vertical"}, onChange:e=>setEditDraft(e.target.value) }),
+              h("div", { style:{display:"flex",gap:8} },
+                h("button", { className:"btn-primary", onClick:()=>{ onUpdate(goals.map(x=>x.id===g.id?{...x,goal:editDraft}:x)); setEditId(null); } }, "保存"),
+                h("button", { className:"btn-secondary", onClick:()=>setEditId(null) }, "キャンセル")
+              )
+            )
+          : h("div", { style:{display:"flex",gap:12,alignItems:"flex-start"} },
+              h("input", { type:"checkbox", checked:g.done, style:{marginTop:3,accentColor:"#6ee7b7",width:18,height:18,flexShrink:0,cursor:"pointer"}, onChange:()=>onUpdate(goals.map(x=>x.id===g.id?{...x,done:!x.done}:x)) }),
+              h("div", { style:{flex:1} },
+                h("div", { style:{marginBottom:6} },
+                  h("span", { className:"cat-badge", style:{background:cc(g.category)+"22",color:cc(g.category)} }, g.category)
+                ),
+                h("div", { style:{fontSize:14,color:g.done?"#4b5563":"#cbd5e1",lineHeight:1.65,textDecoration:g.done?"line-through":"none"} }, g.goal)
+              ),
+              h("div", { style:{display:"flex",flexDirection:"column",gap:6,flexShrink:0} },
+                h("button", { className:"btn-edit", onClick:()=>{ setEditDraft(g.goal); setEditId(g.id); } }, "編集"),
+                h("button", { className:"btn-delete", onClick:()=>onUpdate(goals.filter(x=>x.id!==g.id)) }, "×")
+              )
+            )
+      )),
+      goals.length === 0 && h("div", { style:{textAlign:"center",padding:40,color:"#374151",fontSize:14} }, "目標がありません。追加してください。")
+    )
+  );
+}
+ 
+// ── Main App ────────────────────────────────────────────────
+function App() {
+  const todayKey = getTodayKey();
+  const [tab, setTab] = useState(3);
+  const [vision, setVision] = useState(DEF_VISION);
+  const [longGoals, setLongGoals] = useState(DEF_LONG);
+  const [midGoals, setMidGoals] = useState(DEF_MID);
+  const [tasks, setTasks] = useState(DEF_TASKS);
+  const [editVision, setEditVision] = useState(false);
+  const [vDraft, setVDraft] = useState("");
+  const [addingTask, setAddingTask] = useState(false);
+  const [newTask, setNewTask] = useState({ text:"", category:"学習" });
+  const [filterCat, setFilterCat] = useState("すべて");
+ 
+  // Load from localStorage
+  useEffect(() => {
+    const v = store.get("lp_vision");
+    const lg = store.get("lp_long");
+    const mg = store.get("lp_mid");
+    const t = store.get("lp_tasks_" + todayKey);
+    if (v) setVision(v);
+    if (lg) setLongGoals(lg);
+    if (mg) setMidGoals(mg);
+    if (t) setTasks(t);
+    else store.set("lp_tasks_" + todayKey, DEF_TASKS);
+  }, []);
+ 
+  const updateTasks = n => { setTasks(n); store.set("lp_tasks_" + todayKey, n); };
+  const updateLong  = n => { setLongGoals(n); store.set("lp_long", n); };
+  const updateMid   = n => { setMidGoals(n); store.set("lp_mid", n); };
+  const updateVision= n => { setVision(n); store.set("lp_vision", n); };
+ 
+  const doneTasks = tasks.filter(t => t.done).length;
+  const progress = tasks.length ? Math.round(doneTasks / tasks.length * 100) : 0;
+  const cats = ["すべて", ...Object.keys(CAT_COLORS)];
+  const visibleTasks = filterCat === "すべて" ? tasks : tasks.filter(t => t.category === filterCat);
+  const dateStr = new Date().toLocaleDateString("ja-JP", { year:"numeric", month:"long", day:"numeric", weekday:"long" });
+ 
+  return h("div", { id:"app", style:{ background:"#0f0f13", minHeight:"100vh", padding:"20px 16px 32px" } },
+    h("h1", { className:"sr-only" }, "ライフプランニングダッシュボード"),
+ 
+    // ── Header ──
+    h("div", { style:{ marginBottom:20 } },
+      h("div", { style:{ display:"flex", alignItems:"center", gap:10, marginBottom:3 } },
+        h("div", { style:{ width:5, height:28, background:"linear-gradient(to bottom,#6ee7b7,#3b82f6)", borderRadius:4 } }),
+        h("div", { style:{ fontSize:19, fontWeight:700, color:"#f1f5f9", letterSpacing:"-0.5px" } }, "ライフプランニング")
+      ),
+      h("div", { style:{ paddingLeft:15, fontSize:12, color:"#475569" } }, dateStr)
+    ),
+ 
+    // ── Progress ──
+    h("div", { style:{ background:"#1a1a23", borderRadius:12, padding:"13px 16px", marginBottom:18, border:"1px solid #2d2d3d" } },
+      h("div", { style:{ display:"flex", justifyContent:"space-between", marginBottom:8 } },
+        h("span", { style:{ fontSize:13, color:"#94a3b8" } }, "今日の達成率"),
+        h("span", { style:{ fontSize:13, fontWeight:600, color: progress===100 ? "#6ee7b7" : "#94a3b8" } },
+          `${progress}%  (${doneTasks}/${tasks.length})`
+        )
+      ),
+      h("div", { style:{ background:"#2d2d3d", borderRadius:6, height:5, overflow:"hidden" } },
+        h("div", { className:"progress-fill", style:{ width:`${progress}%` } })
+      )
+    ),
+ 
+    // ── Tabs ──
+    h("div", { style:{ display:"flex", gap:3, marginBottom:20, background:"#1a1a23", padding:4, borderRadius:10, border:"1px solid #2d2d3d" } },
+      TABS.map((t, i) => h("button", {
+        key:i, className:`tab-btn${tab===i?" active":""}`,
+        onClick:()=>setTab(i),
+        style:{ whiteSpace:"pre-line", lineHeight:1.2 }
+      }, t))
+    ),
+ 
+    // ── Vision ──
+    tab === 0 && h("div", null,
+      h("div", { style:{ background:"#1a1a23", borderRadius:12, padding:18, marginBottom:18, border:"1px solid #2d2d3d" } },
+        h("div", { style:{ fontSize:10, fontWeight:700, color:"#6ee7b7", letterSpacing:2, marginBottom:12, textTransform:"uppercase" } }, "ビジョンステートメント"),
+        editVision
+          ? h("div", null,
+              h("textarea", { className:"field", value:vDraft, rows:4, style:{marginBottom:10,resize:"vertical",lineHeight:1.7}, onChange:e=>setVDraft(e.target.value) }),
+              h("div", { style:{display:"flex",gap:8} },
+                h("button", { className:"btn-primary", onClick:()=>{ updateVision({...vision,statement:vDraft}); setEditVision(false); } }, "保存"),
+                h("button", { className:"btn-secondary", onClick:()=>setEditVision(false) }, "キャンセル")
+              )
+            )
+          : h("div", null,
+              h("p", { style:{ fontSize:14, lineHeight:1.75, color:"#cbd5e1", marginBottom:12 } }, vision.statement),
+              h("button", { className:"btn-edit", onClick:()=>{ setVDraft(vision.statement); setEditVision(true); } }, "編集")
+            )
+      ),
+      h("div", { style:{ fontSize:10, fontWeight:700, color:"#475569", letterSpacing:2, marginBottom:12, textTransform:"uppercase" } }, "コアバリュー"),
+      h("div", { style:{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 } },
+        vision.values.map(v => h("div", { key:v.id, style:{ background:"#1a1a23", borderRadius:12, padding:14, border:"1px solid #2d2d3d" } },
+          h("div", { style:{ fontSize:22, marginBottom:6 } }, v.icon),
+          h("div", { style:{ fontSize:13, fontWeight:600, color:"#e2e8f0", marginBottom:3 } }, v.label),
+          h("div", { style:{ fontSize:12, color:"#64748b", lineHeight:1.5 } }, v.desc)
+        ))
+      )
+    ),
+ 
+    // ── Long Goals ──
+    tab === 1 && h(GoalList, { goals:longGoals, onUpdate:updateLong }),
+ 
+    // ── Mid Goals ──
+    tab === 2 && h(GoalList, { goals:midGoals, onUpdate:updateMid }),
+ 
+    // ── Daily Tasks ──
+    tab === 3 && h("div", null,
+      h("div", { style:{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:12 } },
+        h("div", { style:{ fontSize:13, color:"#64748b" } }, `${doneTasks} / ${tasks.length} 完了`),
+        h("button", { className:"btn-add", onClick:()=>setAddingTask(true) }, "+ タスク追加")
+      ),
+ 
+      // Filter pills
+      h("div", { style:{ display:"flex", gap:6, marginBottom:14, overflowX:"auto", paddingBottom:4, WebkitOverflowScrolling:"touch" } },
+        cats.map(c => h("button", {
+          key:c, className:"filter-pill",
+          style: filterCat===c ? { borderColor:cc(c)+"88", background:cc(c)+"22", color:cc(c), fontWeight:600 } : {},
+          onClick:()=>setFilterCat(c)
+        }, c))
+      ),
+ 
+      // Add task form
+      addingTask && h("div", { style:{ background:"#1a1a23", borderRadius:12, padding:16, marginBottom:14, border:"1px solid #3b82f6" } },
+        h("input", { className:"field", placeholder:"タスク名", value:newTask.text, style:{marginBottom:8}, onChange:e=>setNewTask({...newTask,text:e.target.value}) }),
+        h("select", { className:"field", value:newTask.category, style:{marginBottom:12}, onChange:e=>setNewTask({...newTask,category:e.target.value}) },
+          Object.keys(CAT_COLORS).map(c => h("option",{key:c},c))
+        ),
+        h("div", { style:{display:"flex",gap:8} },
+          h("button", { className:"btn-primary", onClick:()=>{ if(!newTask.text.trim())return; updateTasks([...tasks,{id:Date.now(),...newTask,done:false}]); setNewTask({text:"",category:"学習"}); setAddingTask(false); } }, "追加"),
+          h("button", { className:"btn-secondary", onClick:()=>setAddingTask(false) }, "キャンセル")
+        )
+      ),
+ 
+      // Task list
+      h("div", { className:"task-scroll" },
+        h("div", { style:{ display:"flex", flexDirection:"column", gap:8 } },
+          visibleTasks.map(task => h("div", {
+            key:task.id,
+            className:`task-card${task.done?" done":""}`,
+            onClick:()=>updateTasks(tasks.map(t=>t.id===task.id?{...t,done:!t.done}:t))
+          },
+            h("div", { className:`check-box${task.done?" done":""}` },
+              task.done && h("span", { style:{ fontSize:11, color:"#0f0f13", fontWeight:800 } }, "✓")
+            ),
+            h("div", { style:{flex:1} },
+              h("div", { style:{ fontSize:14, color:task.done?"#4b5563":"#e2e8f0", textDecoration:task.done?"line-through":"none", marginBottom:3 } }, task.text),
+              h("span", { className:"cat-badge", style:{ background:cc(task.category)+"22", color:cc(task.category) } }, task.category)
+            ),
+            h("button", { className:"btn-delete",
+              onClick:e=>{ e.stopPropagation(); updateTasks(tasks.filter(t=>t.id!==task.id)); }
+            }, "×")
+          )),
+          visibleTasks.length === 0 && h("div", { style:{ textAlign:"center", padding:40, color:"#374151", fontSize:14 } }, "このカテゴリにはタスクがありません。")
+        )
+      )
+    )
+  );
+}
+ 
+ReactDOM.render(h(App), document.getElementById("app"));
+ 
+// ── Service Worker (offline support) ──────────────────────
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js');
+}
+</script>
+</body>
+</html>
